@@ -1,135 +1,80 @@
-import React, { useState } from 'react';
-
-type RowData = {
-  isSelected: boolean;
-  name: string;
-  age: string;
-  email: string;
-}
+import { screen } from '@testing-library/react';
+import React, { useRef } from 'react'
+import { useEffect } from 'react';
+import './App.css'
 
 const App = () => {
+  const inputMinutes = useRef<any>(null);
+  const inputValue = useRef<any>(null)
 
+  let startFlag = false;
+  let interval: any = null;
 
-  const generateData = (totalRows = 5) => {
-    let rows = [];
-    for (let i = 0; i < totalRows; i++) {
-      rows.push({
-        isSelected: 'false',
-        age: `age + ${i}`,
-        name: `name + ${i}`,
-        email: `email + ${i}`,
-      });
-    }
-
-    return {
-      data: rows,
-      columns: Object.keys(rows[0])
-    };
-  };
-
-  const { columns, data } = generateData(5);
-  const [cols, setCols] = useState<string[]>(columns);
-  const [rows, setRows] = useState(data);
-  const [dragOver, setDragOver] = useState("");
-  const handleSelectRow = React.useCallback((idx: number) => {
-    setRows((prevState) => prevState.map((item: any, index: number) => {
-      if (idx === index) {
-        return {
-          ...item,
-          isSelected: !item.isSelected
-        }
-      } else {
-        return item
-      }
-    }))
-  }, [])
-  const handleDragStart = (e: { target: any; dataTransfer: any }) => {
-    const { id } = e.target;
-    const idx = cols.indexOf(id);
-    e.dataTransfer.setData("colIdx", idx);
-    console.log('handleDragStart')
-  };
-
-  const handleDragOver = (e: { preventDefault: () => any; }) => {
-    console.log('handleDragOver')
-    return e.preventDefault();
-  };
-  const handleDragEnter = (e: { target: any }) => {
-    const { id } = e.target;
-    setDragOver(id);
-    console.log('handleDragEnter', id)
-  };
-
-  const handleOnDrop = (e: any) => {
-    const { id } = e.target;
-    const droppedColIdx = cols.indexOf(id);
-    const draggedColIdx = e.dataTransfer.getData("colIdx");
-    const tempCols = [...cols];
-
-    tempCols[draggedColIdx] = cols[droppedColIdx];
-    tempCols[droppedColIdx] = cols[draggedColIdx];
-    setCols(tempCols);
-    setDragOver("");
-    console.log('handleOnDrop', id)
-    console.log('rows', rows)
-    const test = rows.map((item) => {
-      const arrayChild = Object.entries(item);
-      const result = swap(arrayChild, 2, 1);
-      return result;
-    })
-    console.log('test', test);
-  };
-
-  const swap = (arr: any[], from: number, to: any) => {
-    const result = [...arr]; 
-    result.splice(from, 1, result.splice(to, 1, result[from])[0]); 
-    return result
+  const secondToMinutes = (second: string | number) => {
+    const secondInput = Math.abs(Number(second));
+    const hourResult = Math.floor(Number(secondInput) / 3600);
+    const minutestest = Math.floor((Number(secondInput) - hourResult * 3600) / 60);
+    const secondResult = Number(secondInput) - (hourResult * 3600) - (minutestest * 60);
+    return `${hourResult}: ${String(minutestest).padStart(2, '0')}: ${String(secondResult).padStart(2, '0')}`
   }
-  const rowData = React.useMemo(() => {
-    return rows.map((row, index) => (
-      <tr key={index}>
-        {/* <td>
-          <input type="checkbox" checked={row.isSelected} onClick={() => handleSelectRow(index)}/>
-        </td> */}
-        {Object.entries(row).map(([k, v], idx) => {
-          return (
-            <td key={v} style={{ border: '1px solid black' }}>
-              {row[cols[idx] as keyof RowData]}
-            </td>
-          );
-        })}
-      </tr>
-    ))
-  }, [rows])
+
+  const handleIncreaseSecondTime = () => {
+    const secondArray = String(inputValue.current.textContent).split(':');
+    const sumSecondTime = Number(secondArray[0]) * 3600 + Number(secondArray[1]) * 60 + Number(secondArray[2]);
+    inputValue.current.textContent = secondToMinutes(sumSecondTime + 1);
+  }
+
+  const handleChange = (e: any) => {
+    console.log('e', e.target.value);
+    if (inputMinutes.current) {
+      inputValue.current.textContent = secondToMinutes(e.target.value);
+    }
+  }
+
+  const handleStart = () => {
+    if (inputValue.current && startFlag === false) {
+      startFlag = true;
+      interval = setInterval(handleIncreaseSecondTime, 1000);
+    }
+  }
+
+  const handleStop = () => {
+    startFlag = false;
+    clearInterval(interval);
+  }
+
+  const handleReset = () => {
+    handleStop();
+    inputMinutes.current.value = '';
+    inputValue.current.textContent = '0: 00: 00';
+    inputMinutes.current.focus();
+  }
+
+  useEffect(() => {
+    if (inputMinutes) {
+      inputMinutes.current.focus()
+      inputValue.current.textContent = '0: 00: 00'
+      const clockTitle = screen.getByTestId('clock-id').textContent; 
+      const minutesInput = screen.getByPlaceholderText('typing minutes').nodeValue;
+      console.log('clockTitle', clockTitle)
+      console.log('minutesInput', minutesInput)
+    }
+  }, [])
+  //haha
+
   return (
-    <div>
-      <table>
-        <thead>
-          <tr>
-            {cols.map(col => (
-              <th
-                id={col}
-                key={col}
-                draggable
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDrop={handleOnDrop}
-                onDragEnter={handleDragEnter}
-              // dragOver={col === dragOver}
-              >
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {
-            rowData.map((item) => {
-              return item
-            })
-          }
-        </tbody>
-      </table>
+    <div className='container'>
+      <div>Clock</div>
+      <label>
+        <span>Type minutes</span>
+        <input type="number" placeholder='typing minutes' ref={inputMinutes} onChange={(e) => handleChange(e)} />
+      </label>
+      <div ref={inputValue} data-testid='clock-id' ></div>
+      <div>
+        <button type='button' onClick={() => handleStart()} >start</button>
+        <button type='button' onClick={() => handleStop()} >stop</button>
+        <button type='button' onClick={() => handleReset()}>reset</button>
+      </div>
     </div>
   )
 }
